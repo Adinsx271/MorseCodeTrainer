@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morse Code Translator (Mobile & Desktop)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        #morseCode, #translatedText {
+            font-size: 24px;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        canvas {
+            border: 1px solid black;
+            background-color: #f0f0f0;
+            margin-top: 20px;
+        }
+        #inputArea {
+            width: 100%;
+            height: 200px;
+            background-color: lightgray;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Morse Code Input</h1>
+<p>Tap and hold to input a dash, a quick tap will input a dot. Longer pauses will create spaces between letters and words.</p>
+
+<div id="morseCode">Morse Code: </div>
+<div id="translatedText">Translated Text: </div>
+
+<div id="inputArea">Tap Here</div>
+<canvas id="visualCanvas" width="400" height="150"></canvas>
+
+<script>
+    // Morse code dictionary
+    const morseCodeDict = {
+        A: ".-", B: "-...", C: "-.-.", D: "-..", E: ".", F: "..-.",
+        G: "--.", H: "....", I: "..", J: ".---", K: "-.-", L: ".-..",
+        M: "--", N: "-.", O: "---", P: ".--.", Q: "--.-", R: ".-.",
+        S: "...", T: "-", U: "..-", V: "...-", W: ".--", X: "-..-",
+        Y: "-.--", Z: "--..", "0": "-----", "1": ".----", "2": "..---",
+        "3": "...--", "4": "....-", "5": ".....", "6": "-....", "7": "--...",
+        "8": "---..", "9": "----.", ".": ".-.-.-", ",": "--..--", "?": "..--..",
+        "'": ".----.", "/": "-..-.", "(": "-.--.", ")": "-.--.-", "&": ".-...",
+        ":": "---...", ";": "-.-.-.", "=": "-...-", "+": ".-.-.", "-": "-....-",
+        "_": "..--.-", '"': ".-..-.", "$": "...-..-", "@": ".--.-.", " ": "/"
+    };
+
+    let morseCode = '';
+    let normalText = '';
+    let pressStartTime = 0;
+    let lastKeyPressTime = 0;
+    let waitingForRelease = false;
+    let pressDuration = 0;
+    let pauseDuration = 0;
+    let isKeyPressed = false;
+
+    const canvas = document.getElementById("visualCanvas");
+    const ctx = canvas.getContext("2d");
+    const inputArea = document.getElementById("inputArea");
+
+    function drawVisualFeedback() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Press Bar Thresholds
+        ctx.strokeStyle = "red";
+        ctx.beginPath();
+        ctx.moveTo(0, 100);
+        ctx.lineTo(canvas.width / 2, 100);
+        ctx.stroke();
+        ctx.fillText("Dot (200ms)", 10, 95);
+
+        ctx.strokeStyle = "blue";
+        ctx.beginPath();
+        ctx.moveTo(0, 50);
+        ctx.lineTo(canvas.width / 2, 50);
+        ctx.stroke();
+        ctx.fillText("Dash (1000ms)", 10, 45);
+
+        // Pause Bar Thresholds
+        ctx.strokeStyle = "purple";
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2, 100);
+        ctx.lineTo(canvas.width, 100);
+        ctx.stroke();
+        ctx.fillText("Letter Break (600ms)", canvas.width / 2 + 10, 95);
+
+        ctx.strokeStyle = "orange";
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2, 50);
+        ctx.lineTo(canvas.width, 50);
+        ctx.stroke();
+        ctx.fillText("Word Break (1400ms)", canvas.width / 2 + 10, 45);
+
+        // Draw Press Duration Bar (Left Side)
+        ctx.fillStyle = "#4CAF50";
+        let pressBarHeight = Math.min((pressDuration / 1000) * canvas.height, canvas.height);
+        ctx.fillRect(50, canvas.height - pressBarHeight, 50, pressBarHeight);
+
+        ctx.fillStyle = "black";
+        ctx.fillText("Press", 60, canvas.height - 10);
+
+        // Draw Pause Duration Bar (Right Side)
+        ctx.fillStyle = "#2196F3";
+        let pauseBarHeight = Math.min((pauseDuration / 1400) * canvas.height, canvas.height);
+        ctx.fillRect(300, canvas.height - pauseBarHeight, 50, pauseBarHeight);
+
+        ctx.fillStyle = "black";
+        ctx.fillText("Pause", 310, canvas.height - 10);
+    }
+
+    function updateVisual() {
+        if (isKeyPressed) {
+            pressDuration = Date.now() - pressStartTime;
+        } else {
+            pauseDuration = Date.now() - lastKeyPressTime;
+        }
+        drawVisualFeedback();
+        requestAnimationFrame(updateVisual);
+    }
+
+    function startPress() {
+        if (!waitingForRelease) {
+            pressStartTime = Date.now();
+            waitingForRelease = true;
+            isKeyPressed = true;
+
+            pauseDuration = Date.now() - lastKeyPressTime;
+
+            // If pause > 600ms, start a new letter
+            if (pauseDuration > 600 && pauseDuration < 1400 && morseCode.length > 0) {
+                morseCode += ' ';
+            } else if (pauseDuration >= 1400) {
+                morseCode += "/";
+            }
+        }
+    }
+
+    function endPress() {
+        if (waitingForRelease) {
+            pressDuration = Date.now() - pressStartTime;
+
+            // Determine if it's a dot or a dash
+            if (pressDuration < 200) {
+                morseCode += '.';
+            } else {
+                morseCode += '-';
+            }
+
+            // Translate Morse code to normal text
+            normalText = morseToText(morseCode);
+
+            // Update displayed Morse code and translation
+            document.getElementById('morseCode').textContent = 'Morse Code: ' + morseCode;
+            document.getElementById('translatedText').textContent = 'Translated Text: ' + normalText;
+
+            lastKeyPressTime = Date.now();
+            waitingForRelease = false;
+            isKeyPressed = false;
+            pressDuration = 0;
+        }
+    }
+
+    function morseToText(morse) {
+        return morse.split('/').map(word =>
+            word.split(' ').map(code => {
+                for (let letter in morseCodeDict) {
+                    if (morseCodeDict[letter] === code) {
+                        return letter;
+                    }
+                }
+                return ''; 
+            }).join('')
+        ).join('_');
+    }
+
+    // Event Listeners for Keyboard
+    document.addEventListener('keydown', (event) => { if (event.key === ' ') startPress(); });
+    document.addEventListener('keyup', (event) => { if (event.key === ' ') endPress(); });
+
+    // Event Listeners for Touch (Mobile)
+    inputArea.addEventListener('touchstart', startPress);
+    inputArea.addEventListener('touchend', endPress);
+
+    updateVisual();
+</script>
+
+</body>
+</html>
