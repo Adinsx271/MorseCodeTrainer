@@ -9,6 +9,11 @@
             font-family: Arial, sans-serif;
             text-align: center;
             margin-top: 50px;
+            user-select: none;  /* Prevents text selection */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: none;  /* Disables zoom & scrolling on touch */
         }
         #morseCode, #translatedText {
             font-size: 24px;
@@ -34,6 +39,7 @@
             -moz-user-select: none;  
             -ms-user-select: none;
             touch-action: none;  /* Prevents accidental zooming and scrolling */
+            pointer-event: all
         }
     </style>
 </head>
@@ -198,6 +204,10 @@
     // Event Listeners for Touch (Mobile)
     inputArea.addEventListener('touchstart', startPress);
     inputArea.addEventListener('touchend', endPress);
+
+    document.addEventListener("contextmenu", event => event.preventDefault()); // Disable long-press menu
+    document.addEventListener("selectstart", event => event.preventDefault()); // Disable text selection
+
 
     updateVisual();
 </script>
