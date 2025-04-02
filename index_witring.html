@@ -9,11 +9,6 @@
             font-family: Arial, sans-serif;
             text-align: center;
             margin-top: 50px;
-            user-select: none;  /* Prevents text selection */
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            touch-action: none;  /* Disables zoom & scrolling on touch */
         }
         #morseCode, #translatedText {
             font-size: 24px;
@@ -35,11 +30,7 @@
             font-size: 24px;
             font-weight: bold;
             user-select: none;
-            -webkit-user-select: none;  
-            -moz-user-select: none;  
-            -ms-user-select: none;
-            touch-action: none;  /* Prevents accidental zooming and scrolling */
-            pointer-event: all
+            touch-action: none;
         }
     </style>
 </head>
@@ -48,6 +39,11 @@
 <h1>Morse Code Input</h1>
 <p>Tap and hold to input a dash, a quick tap will input a dot. Longer pauses will create spaces between letters and words.</p>
 
+<div>
+    <label for="timeUnitSlider">Time Unit: <span id="timeUnitValue">200</span> ms</label>
+    <input type="range" id="timeUnitSlider" min="50" max="500" value="200">
+</div>
+
 <div id="morseCode">Morse Code: </div>
 <div id="translatedText">Translated Text: </div>
 
@@ -55,7 +51,6 @@
 <canvas id="visualCanvas" width="400" height="150"></canvas>
 
 <script>
-    // Morse code dictionary
     const morseCodeDict = {
         A: ".-", B: "-...", C: "-.-.", D: "-..", E: ".", F: "..-.",
         G: "--.", H: "....", I: "..", J: ".---", K: "-.-", L: ".-..",
@@ -63,10 +58,7 @@
         S: "...", T: "-", U: "..-", V: "...-", W: ".--", X: "-..-",
         Y: "-.--", Z: "--..", "0": "-----", "1": ".----", "2": "..---",
         "3": "...--", "4": "....-", "5": ".....", "6": "-....", "7": "--...",
-        "8": "---..", "9": "----.", ".": ".-.-.-", ",": "--..--", "?": "..--..",
-        "'": ".----.", "/": "-..-.", "(": "-.--.", ")": "-.--.-", "&": ".-...",
-        ":": "---...", ";": "-.-.-.", "=": "-...-", "+": ".-.-.", "-": "-....-",
-        "_": "..--.-", '"': ".-..-.", "$": "...-..-", "@": ".--.-.", " ": "/"
+        "8": "---..", "9": "----.", " ": "/"
     };
 
     let morseCode = '';
@@ -77,57 +69,64 @@
     let pressDuration = 0;
     let pauseDuration = 0;
     let isKeyPressed = false;
+    let timeUnit = 200; // Default time unit
 
     const canvas = document.getElementById("visualCanvas");
     const ctx = canvas.getContext("2d");
     const inputArea = document.getElementById("inputArea");
+    const timeUnitSlider = document.getElementById("timeUnitSlider");
+    const timeUnitValue = document.getElementById("timeUnitValue");
+
+    timeUnitSlider.addEventListener("input", function () {
+        timeUnit = parseInt(this.value);
+        timeUnitValue.textContent = timeUnit;
+    });
 
     function drawVisualFeedback() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Press Bar Thresholds
+        // Reference lines for timing thresholds
         ctx.strokeStyle = "red";
         ctx.beginPath();
         ctx.moveTo(0, 100);
         ctx.lineTo(canvas.width / 2, 100);
         ctx.stroke();
-        ctx.fillText("Dot (200ms)", 10, 95);
+        ctx.fillText(`Dot (${timeUnit}ms)`, 10, 95);
 
         ctx.strokeStyle = "blue";
         ctx.beginPath();
         ctx.moveTo(0, 50);
         ctx.lineTo(canvas.width / 2, 50);
         ctx.stroke();
-        ctx.fillText("Dash (1000ms)", 10, 45);
+        ctx.fillText(`Dash (${3 * timeUnit}ms)`, 10, 45);
 
-        // Pause Bar Thresholds
         ctx.strokeStyle = "purple";
         ctx.beginPath();
         ctx.moveTo(canvas.width / 2, 100);
         ctx.lineTo(canvas.width, 100);
         ctx.stroke();
-        ctx.fillText("Letter Break (600ms)", canvas.width / 2 + 10, 95);
+        ctx.fillText(`Letter Break (${3 * timeUnit}ms)`, canvas.width / 2 + 10, 95);
 
         ctx.strokeStyle = "orange";
         ctx.beginPath();
         ctx.moveTo(canvas.width / 2, 50);
         ctx.lineTo(canvas.width, 50);
         ctx.stroke();
-        ctx.fillText("Word Break (1400ms)", canvas.width / 2 + 10, 45);
+        ctx.fillText(`Word Break (${7 * timeUnit}ms)`, canvas.width / 2 + 10, 45);
 
         // Draw Press Duration Bar (Left Side)
         ctx.fillStyle = "#4CAF50";
-        let pressBarHeight = Math.min((pressDuration / 1000) * canvas.height, canvas.height);
+        let pressBarHeight = (pressDuration / (3 * timeUnit)) * canvas.height;
+        pressBarHeight = Math.min(pressBarHeight, canvas.height);
         ctx.fillRect(50, canvas.height - pressBarHeight, 50, pressBarHeight);
-
         ctx.fillStyle = "black";
         ctx.fillText("Press", 60, canvas.height - 10);
 
         // Draw Pause Duration Bar (Right Side)
         ctx.fillStyle = "#2196F3";
-        let pauseBarHeight = Math.min((pauseDuration / 1400) * canvas.height, canvas.height);
+        let pauseBarHeight = (pauseDuration / (7 * timeUnit)) * canvas.height;
+        pauseBarHeight = Math.min(pauseBarHeight, canvas.height);
         ctx.fillRect(300, canvas.height - pauseBarHeight, 50, pauseBarHeight);
-
         ctx.fillStyle = "black";
         ctx.fillText("Pause", 310, canvas.height - 10);
     }
@@ -150,10 +149,9 @@
 
             pauseDuration = Date.now() - lastKeyPressTime;
 
-            // If pause > 600ms, start a new letter
-            if (pauseDuration > 600 && pauseDuration < 1400 && morseCode.length > 0) {
+            if (pauseDuration > 3 * timeUnit && pauseDuration < 7 * timeUnit && morseCode.length > 0) {
                 morseCode += ' ';
-            } else if (pauseDuration >= 1400) {
+            } else if (pauseDuration >= 7 * timeUnit) {
                 morseCode += "/";
             }
         }
@@ -163,17 +161,14 @@
         if (waitingForRelease) {
             pressDuration = Date.now() - pressStartTime;
 
-            // Determine if it's a dot or a dash
-            if (pressDuration < 200) {
+            if (pressDuration < timeUnit) {
                 morseCode += '.';
             } else {
                 morseCode += '-';
             }
 
-            // Translate Morse code to normal text
             normalText = morseToText(morseCode);
 
-            // Update displayed Morse code and translation
             document.getElementById('morseCode').textContent = 'Morse Code: ' + morseCode;
             document.getElementById('translatedText').textContent = 'Translated Text: ' + normalText;
 
@@ -197,20 +192,18 @@
         ).join('_');
     }
 
-    // Event Listeners for Keyboard
     document.addEventListener('keydown', (event) => { if (event.key === ' ') startPress(); });
     document.addEventListener('keyup', (event) => { if (event.key === ' ') endPress(); });
 
-    // Event Listeners for Touch (Mobile)
     inputArea.addEventListener('touchstart', startPress);
     inputArea.addEventListener('touchend', endPress);
 
-    document.addEventListener("contextmenu", event => event.preventDefault()); // Disable long-press menu
-    document.addEventListener("selectstart", event => event.preventDefault()); // Disable text selection
-
-
     updateVisual();
 </script>
+
+<div style="margin-top: 100px;" id="linkToHearingMode">
+    <a href="index_hearing.html">Switch to Hearing Mode</a>
+</div>
 
 </body>
 </html>
