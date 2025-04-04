@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Morse Code Trainer</title>
     <script>
-        const words = ["apple", "banana", "cherry", "dog", "elephant", "fish", "grape", "house", "island", "jungle", "kangaroo", "lemon", "mountain", "notebook", "orange", "penguin", "queen", "rainbow", "sunshine", "tiger", "umbrella", "violin", "watermelon", "xylophone", "yogurt", "zebra", "astronaut", "butterfly", "caterpillar", "dolphin", "engine", "forest", "giraffe", "helicopter", "internet", "jacket", "keyboard", "lighthouse", "microscope", "nebula", "octopus", "puzzle", "quasar", "robot", "satellite", "telescope", "universe", "volcano", "whale", "xenon", "yacht", "zeppelin", "adventure", "backpack", "calculator", "detective", "escalator", "fountain", "greenhouse", "hamburger", "invention", "joystick", "kilogram", "laboratory", "magnolia", "nightmare", "orchestra", "pantomime", "quarantine", "revolution", "strawberry", "trampoline", "underwater", "vocabulary", "wildflower", "xylophonist", "yesterday", "zigzag"];
+        const words = ["apple", "banana", "cherry", "dog", "elephant", "fish", "grape", "house", "island", "jungle", "kangaroo", "lemon", "mountain", "notebook", "orange", "penguin", "queen", "rainbow", "sunshine", "tiger", "umbrella", "violin", "watermelon", "xylophone", "yogurt", "zebra"];
 
         const morseMap = {
             "a": ".-", "b": "-...", "c": "-.-.", "d": "-..", "e": ".", "f": "..-.", "g": "--.", "h": "....",
@@ -14,7 +14,8 @@
             "y": "-.--", "z": "--.."
         };
         let correctWord = "";
-        let timeUnit = 200; // Default time unit in milliseconds
+        let timeUnit = 200;
+        let hardMode = false;
 
         function updateTimeUnit(value) {
             timeUnit = parseInt(value);
@@ -34,8 +35,7 @@
             let i = 0;
             function playNext() {
                 if (i >= morse.length) return;
-                let delay = timeUnit; // Default delay for inter-symbol spacing
-
+                let delay = timeUnit;
                 if (morse[i] === '.') {
                     playTone(audioCtx, timeUnit);
                 } else if (morse[i] === '-') {
@@ -43,12 +43,11 @@
                     delay = 3 * timeUnit;
                 } else if (morse[i] === ' ') {
                     if (i > 0 && morse[i - 1] !== ' ') {
-                        delay = 3 * timeUnit; // Space between letters
+                        delay = 3 * timeUnit;
                     } else {
-                        delay = 7 * timeUnit; // Space between words
+                        delay = 7 * timeUnit;
                     }
                 }
-                
                 setTimeout(playNext, delay + timeUnit);
                 i++;
             }
@@ -71,22 +70,34 @@
             let morseCode = wordToMorse(correctWord);
             playMorse(morseCode);
             
-            let options = [correctWord];
-            while (options.length < 4) {
-                let randomWord = getRandomWord();
-                if (!options.includes(randomWord)) options.push(randomWord);
+            if (hardMode) {
+                document.getElementById("options").innerHTML = `<input type='text' id='answerInput' placeholder='Type your answer'>
+                <button onclick='checkTypedAnswer()'>Submit</button>`;
+            } else {
+                let options = [correctWord];
+                while (options.length < 4) {
+                    let randomWord = getRandomWord();
+                    if (!options.includes(randomWord)) options.push(randomWord);
+                }
+                options.sort(() => Math.random() - 0.5);
+                document.getElementById("options").innerHTML = options.map(word => `<button onclick="checkAnswer('${word}')">${word}</button>`).join(' ');
             }
-            options.sort(() => Math.random() - 0.5);
-            
-            document.getElementById("options").innerHTML = options.map(word => `<button onclick="checkAnswer('${word}')">${word}</button>`).join(' ');
         }
         
         function checkAnswer(selected) {
-            if (selected === correctWord) {
-                alert("Correct!");
-            } else {
-                alert("Wrong! The correct answer was " + correctWord);
-            }
+            alert(selected === correctWord ? "Correct!" : "Wrong! The correct answer was " + correctWord);
+            generateQuiz();
+        }
+
+        function checkTypedAnswer() {
+            let userInput = document.getElementById("answerInput").value.trim().toLowerCase();
+            alert(userInput === correctWord ? "Correct!" : "Wrong! The correct answer was " + correctWord);
+            generateQuiz();
+        }
+
+        function toggleHardMode() {
+            hardMode = !hardMode;
+            document.getElementById("hardModeButton").innerText = hardMode ? "Switch to Easy Mode" : "Switch to Hard Mode";
             generateQuiz();
         }
         
@@ -100,7 +111,10 @@
     <input type="range" id="timeUnitSlider" min="50" max="500" value="200" step="10" oninput="updateTimeUnit(this.value)">
     <span id="timeUnitDisplay">200 ms</span>
     <br><br>
+    <button id="hardModeButton" onclick="toggleHardMode()">Switch to Hard Mode</button>
+    <br><br>
     <div id="options"></div>
+
     <div style="margin-top: 100px;" id="linkToWritingMode">
         <a href="index.html">Switch to WritingMode Mode</a>
     </div>
